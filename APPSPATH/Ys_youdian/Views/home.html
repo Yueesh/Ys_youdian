@@ -1,0 +1,104 @@
+{template "header.html"}
+<style>
+  .form-control{ display: inline-block;}
+</style>
+<div class="note note-danger">
+  YouDianCMS 数据库转入
+</div>
+<div class="portlet bordered light ">
+  <div class="portlet-title tabbable-line">
+    <div class="caption">
+      <span class="caption-subject">
+        YouDianCMS 数据库
+      </span>
+    </div>
+  </div>
+  <div class="portlet-body">
+    <form role="form" id="myform">
+      {$form}
+      <div class="form-body">
+        <p>打开YouDiancms程序目录中的数据库配置文件：/App/Conf/db.php</p>
+        <div class="form-group">
+          <label>数据库地址：</label>
+          <label><input type="text" name="data[host]" value="{$data.hostname}" class="form-control input-xlarge" placeholder=""> DB_HOST</label>
+        </div>
+        <div class="form-group">
+          <label>数据库账号：</label>
+          <label><input type="text" name="data[user]" value="{$data.username}" class="form-control input-xlarge" placeholder=""> DB_USER</label>
+        </div>
+        <div class="form-group">
+          <label>数据库密码：</label>
+          <label><input type="text" name="data[pass]" value="{$data.password}" class="form-control input-xlarge" placeholder=""> DB_PWD</label>
+        </div>
+        <div class="form-group">
+          <label>数据库名称：</label>
+          <label><input type="text" name="data[name]" value="{$data.database}" class="form-control input-xlarge" placeholder=""> DB_NAME</label>
+        </div>
+        <div class="form-group">
+          <label>数据表前缀：</label>
+          <label><input type="text" name="data[prefix]" value="{$data.DBPrefix}" class="form-control input-xlarge" placeholder="格式：cms_"> DB_PREFIX</label>
+        </div>
+        <div class="form-group">
+          <label>数据库端口：</label>
+          <label><input type="text" name="data[prot]" value="{$data.prot}" class="form-control input-xlarge" placeholder="默认3306"> DB_PORT</label>
+        </div>
+        <div class="form-group">
+          <label>图片是否入库：</label>
+          <label>
+            <input type="checkbox" id="switch" name="data[is_down]" class="make-switch" {if $data.is_down}checked{/if}>
+          </label>
+          <p> 开启后将图片、附件等文件保存到新网站中，但图片、附件入库可能失败，失败时，将存入原地址，需手工将原图片附件等上传到新网站。</p>
+        </div>
+        <div class="form-group domain" {if ! $data.is_down}style="display: none;" {/if}>
+          <label>原网站网址：</label>
+          <label>
+            <input type="text" name="data[old_domain]" class="form-control input-xlarge" placeholder="原网站网址" value="{$data.old_domain}">
+            <span> 以http或https开头，结尾不要有 / </span>
+          </label>
+          <div class="form-group">
+            <label>下载超时：</label>
+            <label><input type="text" name="data[time]" value="{$data.time}" class="form-control input-xlarge" placeholder="10秒"></label>
+            <p> 超时设置，单位秒，默认10秒 </p>
+          </div>
+        </div>
+      </div>
+      <div class="form-actions right">
+        <button type="button" onclick="_submit()" class="btn green"> 下一步 </button>
+      </div>
+    </form>
+  </div>
+
+</div>
+<script>
+
+  $( '#switch' ).bootstrapSwitch( {
+    onText: "启用",
+    offText: "禁用",
+    onColor: "success",
+    offColor: "danger",
+    size: "small",
+    onSwitchChange: function( event, state ) {
+      if ( state == true ) {
+        $( '.domain' ).show()
+      } else {
+
+        $( '.domain' ).hide()
+      }
+    }
+  } )
+
+  function _submit() {
+    console.log( $( '#switch' ).is( ':checked' ) )
+    if ( $( '#switch' ).is( ':checked' ) ) {
+      // console.log( )
+      if ( $( '.domain input' ).val() == '' ) {
+        layer.msg( '原网站网址网址必填！' )
+        return false
+      }
+    } else {
+      $( '.domain input' ).val( '' )
+    }
+    dr_ajax_submit( "{dr_url(APP_DIR.'/home/index')}", 'myform', 2000 )
+  }
+</script>
+{template "footer.html"}

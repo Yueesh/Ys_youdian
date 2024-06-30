@@ -1,0 +1,174 @@
+{template "header.html"}
+
+<div class="note note-danger">
+  导入 YouDianCMS 数据库，新站尽量用全新安装空白的网站，导入数据将覆盖现有数据！
+</div>
+<div class="portlet bordered light ">
+  <div class="portlet-title tabbable-line">
+    <div class="caption">
+      <span class="caption-subject text-danger">
+        {if $old_domain}
+        已开启图片入库，图片、附件等文件将保存到新网站中。 原网站网址：{$old_domain}<br>图片下载超时：{$time} 秒
+        {else}
+        未开启图片入库，需手动将图片、附件等文件（/Upload）上传至新网站。
+        {/if}
+      </span>
+    </div>
+  </div>
+</div>
+<div class="portlet bordered light ">
+  <div class="portlet-title tabbable-line">
+    <div class="caption">
+      <span class="caption-subject">
+      1、栏目表导入（禁用栏目不导入）
+      </span>
+    </div>
+  </div>
+  <div class="portlet-body">
+    <div class="form-body">
+      <table class="table table-mtotal table-nomargin table-bordered table-striped table-bordered table-advance">
+        <thead>
+        <tr>
+          <th width="120">名称</th>
+          <th width="150">数据表</th>
+          <th width="100">内容数</th>
+          <th></th>
+        </tr>
+        </thead>
+        <tbody>
+        {loop $table $i $t}
+        <tr>
+          <td>{$t.name}</td>
+          <td>Channel</td>
+          <td>{$t.total}</td>
+          <td style="text-align: left">
+            <label>
+              <a class="btn btn-xs red" href="{dr_url(APP_DIR.'/home/edit')}&st=0&lang={$i+1}"> <i class="fa fa-sign-in"></i> 立即转入</a>
+            </label>
+          </td>
+        </tr>
+        {/loop}
+        </tbody>
+      </table>
+    </div>
+
+  </div>
+</div>
+
+<div class="portlet bordered light ">
+  <div class="portlet-title tabbable-line">
+    <div class="caption">
+      <span class="caption-subject">
+      2、数据模块转入（禁用信息及未审核信息不导入）
+      </span>
+    </div>
+  </div>
+  <div class="portlet-body">
+      <div class="form-body">
+        <table class="table table-mtotal table-nomargin table-bordered table-striped table-bordered table-advance">
+          <thead>
+          <tr>
+            <th width="120">名称</th>
+            <th width="150">数据表</th>
+            <th width="100">内容数</th>
+            <th></th>
+          </tr>
+          </thead>
+          <tbody>
+          {loop $module $i $t}
+          <tr>
+            <td>{$t.name}</td>
+            <td>Info</td>
+            <td>{$t.total}</td>
+            <td style="text-align: left">
+              <label>
+                <a class="btn btn-xs red" href="{dr_url(APP_DIR.'/home/edit')}&st=1&lang={$i+1}"> <i class="fa fa-sign-in"></i> 立即转入</a>
+                遇到故障可以重复转入，id序列保持原站相同
+              </label>
+            </td>
+          </tr>
+          {/loop}
+          </tbody>
+        </table>
+      </div>
+  </div>
+</div>
+
+<div class="portlet bordered light ">
+  <div class="portlet-title tabbable-line">
+    <div class="caption">
+      <span class="caption-subject">
+      3、网站设置、Banner、友情链接等变量导入,为了方便查看导入后的图片，域名不导入，需要手动设置
+      </span>
+    </div>
+  </div>
+  <div class="portlet-body">
+      <div class="form-body">
+        <table class="table table-mtotal table-nomargin table-bordered table-striped table-bordered table-advance">
+          <thead>
+          <tr>
+            <th width="120">名称</th>
+            <th></th>
+          </tr>
+          </thead>
+          <tbody>
+          {loop $webset $i $t}
+          <tr>
+            <td>{$t.name}</td>
+            <td style="text-align: left">
+              <label>
+                <a class="btn btn-xs red" href="{dr_url(APP_DIR.'/home/webset')}&st=1&lang={$i+1}"> <i class="fa fa-sign-in"></i> 立即转入</a>
+                遇到故障可以重复转入
+              </label>
+            </td>
+          </tr>
+          {/loop}
+          </tbody>
+        </table>
+      </div>
+  </div>
+</div>
+{if $failimgs}
+<div class="portlet bordered light failimgs">
+  <div class="portlet-title tabbable-line">
+    <div class="text-danger">
+      <p>前一次导入失败的图片及附件</p>
+      <p>如开启《图片是否入库》，导入时保存失败的文件在此显示，需要手工将文件上传到新网站。注意上传路径！</p>
+      <p>因各种因素，路径可能可能有误，请手工检查。</p>
+    </div>
+  </div>
+  <div class="portlet-body">
+    <div class="form-body">
+      <form role="form" id="myform">
+        <table class="table table-mtotal table-nomargin table-bordered table-striped table-bordered table-advance">
+          <thead>
+            <tr>
+              <th width="650">原始附件路径</th>
+              <th width="120">模块名称</th>
+              <th width="100">模块ID</th>
+              <th width="100">站点ID</th>
+            </tr>
+          </thead>
+          <tbody>
+            {loop $failimgs $v}
+            <tr>
+              <td style="text-align: left"><a href="{$old_domain}{$v['url']}" target="_blank">{$old_domain}{$v['url']}</a></td>
+              <td>{$v['name']}</td>
+              <td>{$v['id']}</td>
+              <td>{$v['siteid']}</td>
+            </tr>
+            {/loop}
+          </tbody>
+        </table>
+        <button class="btn green" type="button">清空失败记录</button>
+      </form>
+    </div>
+  </div>
+</div>
+<script>
+    $('.failimgs').on('click', 'button', function(){
+      dr_ajax_option( "{dr_url(APP_DIR.'/home/clear_failimgs')}", '你确定要删除它们吗？', 1 )
+    })
+</script>
+{/if}
+{template "footer.html"}

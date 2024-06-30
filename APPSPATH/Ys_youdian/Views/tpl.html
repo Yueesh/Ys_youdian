@@ -1,0 +1,41 @@
+{template "header.html"}
+<style>
+  .form-control{ display: inline-block;}
+</style>
+<div class="note note-danger">
+  YouDianCMS 模板转换
+</div>
+
+
+<div class="portlet bordered light">
+  <div class="portlet-title tabbable-line">
+    <div class="text-danger">
+      <p>将需要转换的模板文件，上传至 "App/Ys_youdian/Cache/old/"</p>
+      <p>转换后文件将存储在 "App/Ys_youdian/Cache/new/"</p>
+      <p>模板转换并不能完全转换各种标签，还需要进行手动进行修改</p>
+      <p>自定义的一些字段，要特别留意大小写的区别；一些循环的标签，要留意一下module及catid参数</p>
+      <p>留言反馈相关模板区别太大，form标签及js请手工修改整理</p>
+    </div>
+  </div>
+  <div class="portlet-body">
+    <div class="form-body">
+      <form role="form" id="myform">
+        <div class="form-group">
+          <label>模板文件列表：</label>
+        <textarea rows="10" style="display: block;width: 400px;padding: 10px;">{$list}</textarea>
+        </div>
+        <div class="form-actions right">
+          <a class="btn green" type="button" href="{dr_url(APP_DIR.'/tpl/tpl_convert')}">开始转换</a>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<script>
+  // $('#myform').on('click', 'button', function(){
+  //   dr_ajax_submit( "{dr_url(APP_DIR.'/tpl/tpl_convert')}", 'myform' )
+  // })
+</script>
+
+{template "footer.html"}
