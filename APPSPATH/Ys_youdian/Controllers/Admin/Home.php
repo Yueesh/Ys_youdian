@@ -305,7 +305,7 @@ class Home extends \Phpcmf\App
                         $thumb = $this->_saveimg( $t['ChannelID'], $t['ChannelPicture'], 'share_category' );
                     }
                     $content = $t['ChannelContent'];
-                    $content = $this->special_html( $content );//字符转换
+                    $content = $this->special_html( $content ); //字符转换
                     if ( $this->is_down ) {
                         //
                         // $content = str_replace( "&amp;", '&', $content );
@@ -322,6 +322,11 @@ class Home extends \Phpcmf\App
                                 $content = str_replace( $img, dr_get_file( $_img ), $content );
                             }
                         }
+
+                        // 编辑器中的图片转存本地
+                        // $content = $this->_content( $content, 'share_category', $t['ChannelID'], '' );
+
+
                     }
                     // XR_L('cache')->set_file('m2', [$t['ChannelID'],$thumb]);
                     $save    = [];
@@ -536,19 +541,8 @@ class Home extends \Phpcmf\App
                     $content = $row['InfoContent'];
                     $content = $this->special_html( $content );
                     if ( $this->is_down ) {
-                        // $imgs    = dr_get_content_img( $content );
-                        // 系统取图片函数改成用正则获取
-                        preg_match_all( '/<img[^>]* src="([^"]*)"[^>]*>/i', $content, $matchs );
-                        $imgs = $matchs[1];
-                        // \Phpcmf\Service::L('cache')->set_file('ys_tmp', $imgs);
-                        foreach ( $imgs as $img ) {
-                            if ( $img ) {
-                                $img     = explode( '?', $img )[0];
-                                $img     = str_replace( SITE_URL, '/', $img );
-                                $_img    = $this->_saveimg( $row['InfoID'], $img, $mid, dr_date( strtotime( $row['InfoTime'] ), 'Ym' ) );
-                                $content = str_replace( $img, dr_get_file( $_img ), $content );
-                            }
-                        }
+                        // 编辑器中的图片转存本地
+                        $content = $this->_content( $content, $mid, $row['InfoID'], dr_date( strtotime( $row['InfoTime'] ), 'Ym' ) );
                     }
 
                     $save = [
@@ -886,8 +880,10 @@ class Home extends \Phpcmf\App
             $f = strtolower( str_replace( ['（', '）', ' ', '(', ')', '/'], '', dr_safe_filename( $t['FieldName'] ) ) );
 
             if ( $is_tb && ! XR_M()->db->fieldExists( $f, $table ) ) {
-                if ( strpos( $t['FieldType'], 'char' ) !== false ) {
-                    XR_M()->query( 'ALTER TABLE `' . $table . '` ADD `' . $f . '` VARCHAR(200) DEFAULT NULL COMMENT "' . $t['DisplayName'] . '"' );
+                if ( preg_match( '/^f\d+/', $t['FieldName'] ) ) {
+                    XR_M()->query( 'ALTER TABLE `' . $table . '` ADD `' . $f . '` Text DEFAULT NULL COMMENT "' . $t['DisplayName'] . '"' );
+                } elseif ( strpos( $t['FieldType'], 'char' ) !== false ) {
+                    XR_M()->query( 'ALTER TABLE `' . $table . '` ADD `' . $f . '` VARCHAR(512) DEFAULT NULL COMMENT "' . $t['DisplayName'] . '"' );
                 } elseif ( strpos( $t['FieldType'], 'int' ) !== false ) {
                     XR_M()->query( 'ALTER TABLE `' . $table . '` ADD `' . $f . '` int(10) DEFAULT NULL COMMENT "' . $t['DisplayName'] . '"' );
                 } else {
@@ -975,6 +971,9 @@ class Home extends \Phpcmf\App
                     $file = $this->_saveimg( $id, $file, $mid, $time );
                 }
                 $value = $file;
+            } elseif ( $t['DisplayType'] == 'editormini' || $t['DisplayType'] == 'editor' ) {
+                // 编辑器 editor' 'editormini
+                $value = $this->_content( $row[$t['FieldName']], $mid, $id, $time );
             } else {
                 $value = $row[$t['FieldName']];
             }
@@ -982,6 +981,28 @@ class Home extends \Phpcmf\App
             $save[1][strtolower( $t['FieldName'] )] = $value;
         }
         return $save;
+    }
+
+    /**
+     * 编辑器中的图片转存本地
+     */
+    private function _content( $content, $mid, $id, $time = '' )
+    {
+
+        // $imgs    = dr_get_content_img( $content );
+        // 系统取图片函数改成用正则获取
+        preg_match_all( '/<img[^>]* src="([^"]*)"[^>]*>/i', $content, $matchs );
+        $imgs = $matchs[1];
+        // \Phpcmf\Service::L('cache')->set_file('ys_tmp', $imgs);
+        foreach ( $imgs as $img ) {
+            if ( $img ) {
+                $img     = explode( '?', $img )[0];
+                $img     = str_replace( SITE_URL, '/', $img );
+                $_img    = $this->_saveimg( $id, $img, $mid, $time );
+                $content = str_replace( $img, dr_get_file( $_img ), $content );
+            }
+        }
+        return $content;
     }
 
     private function _db()
@@ -1162,8 +1183,6 @@ class Home extends \Phpcmf\App
         return $fields;
     }
 
-
-
     // 下载远程文件
     private function _saveimg( $id, $url, $table, $time = '' )
     {
@@ -1249,7 +1268,8 @@ class Home extends \Phpcmf\App
         XR_L( 'cache' )->set_file( 'ys_youdian_failimgs', $failimgs );
         return $url;
     }
-        /**
+
+    /**
      * 将特定的HTML实体转换为它们对应的字符。
      *
      * @param string $content 包含HTML实体的字符串。
