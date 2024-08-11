@@ -37,7 +37,7 @@ class Home extends \Phpcmf\App
             'form' => dr_form_hidden(),
             'menu' => XR_M( 'auth' )->_admin_menu( [
                 'YouDiancms 数据迁入' => [APP_DIR . '/' . XR_L( 'Router' )->class . '/index', 'fa fa-database'],
-                'YouDiancms 模板转换' => ['ys_youdian/tpl/index', 'fa fa-database']
+                // 'YouDiancms 模板转换' => ['ys_youdian/tpl/index', 'fa fa-database']
             ]
             )
         ] );
@@ -526,6 +526,9 @@ class Home extends \Phpcmf\App
                 foreach ( $list as $row ) {
                     $channel          = $this->_db()->table( 'channel' )->where( 'ChannelID', $row['ChannelID'] )->select( 'ChannelModelID' )->get()->getRowArray(); //栏目列表
                     $channel_model_id = $channel['ChannelModelID']; //模型ID号
+                    if( $channel_model_id == '37' || ! $channel_model_id){ //排除反馈模型内容 及 不关联栏目的信息
+                        continue;
+                    }
                     $c                = array_search( $channel_model_id, array_column( $this->mods, 'ChannelModelID' ) );
                     $mid              = $this->mods[$c]['nid']; //模型英文名
                     $fields           = $this->_fields( $channel_model_id, $lang );
@@ -1198,7 +1201,9 @@ class Home extends \Phpcmf\App
         if ( stripos( $url, 'https://img7' ) === 0 ) {
             $url = str_replace( "https://img7", 'http://img6', $url );
         }
-
+        if ( stripos( $url, '//' ) === 0 ) {
+            $url = 'http:'. $url ;
+        }
         // print_r($url);exit;
         if ( stripos( $url, 'http' ) !== 0 ) {
             $url = $this->old_domain . $url;
@@ -1277,6 +1282,8 @@ class Home extends \Phpcmf\App
      */
     private function special_html( $content )
     {
+        $content = str_replace( "&amp;amp;", "&amp;", $content );
+        $content = str_replace( "&amp;", "&", $content );
         $content = str_replace( "&lt;", "<", $content );
         $content = str_replace( "&gt;", ">", $content );
         $content = str_replace( "&amp;ldquo;", "“", $content );
@@ -1286,6 +1293,8 @@ class Home extends \Phpcmf\App
         $content = str_replace( "&quot;", '"', $content );
         $content = str_replace( "&amp;mdash;", '—', $content );
         $content = str_replace( "&mdash;", '—', $content );
+        $content = str_replace( "&amp;middot;", '·', $content );
+        $content = str_replace( "&middot;", '·', $content );
         return $content;
     }
 }
