@@ -22,7 +22,7 @@ class Home extends \Phpcmf\App
             $this->is_down    = $this->custom['is_down'];
             $this->old_domain = $this->custom['old_domain'];
         }
-        $this->custom['time'] = $this->custom['time'] ? $this->custom['time'] : 10;
+        $this->custom['time'] = $this->custom['time'] ? $this->custom['time'] : 100;
         $this->validate       = [
             'xss'       => '1',
             'required'  => '0',
@@ -305,7 +305,7 @@ class Home extends \Phpcmf\App
                         $thumb = $this->_saveimg( $t['ChannelID'], $t['ChannelPicture'], 'share_category' );
                     }
                     $content = $t['ChannelContent'];
-                    $content = $this->special_html( $content ); //字符转换
+                    $content = dr_code2html( $content ); //字符转换
                     if ( $this->is_down ) {
                         //
                         // $content = str_replace( "&amp;", '&', $content );
@@ -542,7 +542,7 @@ class Home extends \Phpcmf\App
                     }
 
                     $content = $row['InfoContent'];
-                    $content = $this->special_html( $content );
+                    $content = dr_code2html( $content );
                     if ( $this->is_down ) {
                         // 编辑器中的图片转存本地
                         $content = $this->_content( $content, $mid, $row['InfoID'], dr_date( strtotime( $row['InfoTime'] ), 'Ym' ) );
@@ -1189,12 +1189,22 @@ class Home extends \Phpcmf\App
     // 下载远程文件
     private function _saveimg( $id, $url, $table, $time = '' )
     {
-
+        $_url = $url;
+        $url = trim($url); // 去除首尾空格
+        $parsed_url = parse_url($url);
+        
+        if (isset($parsed_url['scheme']) && isset($parsed_url['host'])) {
+            $path = isset($parsed_url['path']) ? rawurlencode($parsed_url['path']) : '';
+            $query = isset($parsed_url['query']) ? '?' . rawurlencode($parsed_url['query']) : '';
+            $url = $parsed_url['scheme'] . '://' . $parsed_url['host'] . $path . $query;
+        } else {
+            $url = str_replace(' ', '%20', $url); // 仅替换空格
+        }
         $timeout = $this->custom['time'] ? $this->custom['time'] : 10;
         if ( stripos( $url, 'file' ) === 0 ) { //忽略
             return $this->save_err( $id, $_url, $table );
         }
-        $_url = $url;
+        
         if ( stripos( $url, '//img7' ) === 0 ) {
             $url = str_replace( "//img7", 'http://img6', $url );
         }
@@ -1272,29 +1282,5 @@ class Home extends \Phpcmf\App
         ];
         XR_L( 'cache' )->set_file( 'ys_youdian_failimgs', $failimgs );
         return $url;
-    }
-
-    /**
-     * 将特定的HTML实体转换为它们对应的字符。
-     *
-     * @param string $content 包含HTML实体的字符串。
-     * @return string 替换HTML实体后的字符串。
-     */
-    private function special_html( $content )
-    {
-        $content = str_replace( "&amp;amp;", "&amp;", $content );
-        $content = str_replace( "&amp;", "&", $content );
-        $content = str_replace( "&lt;", "<", $content );
-        $content = str_replace( "&gt;", ">", $content );
-        $content = str_replace( "&amp;ldquo;", "“", $content );
-        $content = str_replace( "&amp;rdquo;", "”", $content );
-        $content = str_replace( "&ldquo;", "“", $content );
-        $content = str_replace( "&rdquo;", "”", $content );
-        $content = str_replace( "&quot;", '"', $content );
-        $content = str_replace( "&amp;mdash;", '—', $content );
-        $content = str_replace( "&mdash;", '—', $content );
-        $content = str_replace( "&amp;middot;", '·', $content );
-        $content = str_replace( "&middot;", '·', $content );
-        return $content;
-    }
+    }  
 }
