@@ -468,7 +468,7 @@ class Home extends \Phpcmf\App
                     }
                     $this->_admin_msg(1, dr_lang('正在执行中...'), $to_url . '&total=' . $total . '&cpage=' . ($cpage + 1));
                 }
-                $psize = $this->is_down ? 10 : 20; //不下载远程文件每次20，下载远程文件每次1条
+                $psize = $this->is_down ? 1 : 20; //不下载远程文件每次20，下载远程文件每次1条
                 $total = (int) XR_L('input')->get('total');
                 $tpage = ceil($total / $psize); // 总页数
                 // 更新完成
@@ -836,7 +836,7 @@ class Home extends \Phpcmf\App
                 $this->_add_field($t['DisplayName'], $f, $id, 'Related', dr_array2string($setting['related']), $relatedname);
             } elseif ($t['DisplayType'] == 'channelexselect') {
                 // 扩展栏目
-                $this->_add_field('扩展栏目', 'catids', $id, 'Catids', dr_array2string($setting['channelexselect']), $relatedname);
+                $this->_add_field($t['DisplayName'], $f, $id, 'Catids', dr_array2string($setting['channelexselect']), $relatedname);
             } elseif ($t['DisplayType'] == 'radio' || $t['DisplayType'] == 'select' || $t['DisplayType'] == 'checkbox') {
                 //单选 多选 下拉
                 $options = '';
@@ -1093,6 +1093,11 @@ class Home extends \Phpcmf\App
                     $count = $this->_db()->table('channel')->where($t['FieldName'] . ' != ""')->where('LanguageID', $lang)->where('IsEnable', 1)->countAllResults();
                 } else {
                     $count = $this->_db()->table('info')->where($t['FieldName'] . ' != ""')->whereIn('ChannelID', $channelids)->where('LanguageID', $lang)->where('IsEnable', 1)->countAllResults();
+                }
+                if ( $t['DisplayType'] == 'channelexselect' ){
+                    // 扩展栏目字段名改成 catids
+                    $t['FieldName'] =  'catids';
+                    $t['DisplayName'] = '扩展栏目';
                 }
                 $count && $fields[] = $t;
             }
