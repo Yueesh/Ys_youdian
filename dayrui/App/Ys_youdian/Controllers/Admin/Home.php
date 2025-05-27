@@ -537,7 +537,7 @@ class Home extends \Phpcmf\App
                     }
                     $this->_save_content($mid, $save);
                 }
-                $this->_admin_msg(1, dr_lang('正在执行中【%s】...', "$tpage/$cpage"), $to_url . '&total=' . $total . '&cpage=' . ($cpage + 1), 0);
+                $this->_admin_msg(1, dr_lang('正在执行中【%s】...'.$row['InfoID'], "$tpage/$cpage"), $to_url . '&total=' . $total . '&cpage=' . ($cpage + 1), 0);
             }
         }
     }
@@ -905,16 +905,22 @@ class Home extends \Phpcmf\App
             } elseif ($t['DisplayType'] == 'editormini' || $t['DisplayType'] == 'editor') {
                 // 编辑器 editor' 'editormini
                 $value = $this->_content($row[$t['FieldName']], $mid, $id, $time);
-            } else {
+            } elseif($t['DisplayType'] == 'channelexselect' ){
+                $value = $row['ChannelIDEx'];
+                if( $value ){
+                    $value = explode(',', $value);
+                    $value = dr_array2string($value);
+                }
+                // $t['FieldName'] =  'catids';
+                // $t['DisplayName'] = '扩展栏目';
+                // var_dump($value);exit;
+
+            }else {
                 $value = $row[$t['FieldName']];
             }
-            if ($t['DisplayType'] == 'channelexselect') {
-                $value = explode(',', $value);
-                $save[1]['catids'] = dr_array2string($value);
-            } else {
-                /**字段名称小写 */
-                $save[1][strtolower($t['FieldName'])] = $value;
-            }
+
+            /**字段名称小写 */
+            $save[1][strtolower($t['FieldName'])] = $value;
         }
         return $save;
     }
