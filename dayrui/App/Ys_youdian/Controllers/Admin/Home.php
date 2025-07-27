@@ -11,6 +11,7 @@ class Home extends \Phpcmf\App
 {
     private $is_down;
     private $old_domain;
+    private $psize;
     private $custom   = [];
     private $mods     = [];
     private $validate = [];
@@ -23,6 +24,7 @@ class Home extends \Phpcmf\App
         if ($this->custom) {
             $this->is_down    = $this->custom['is_down'];
             $this->old_domain = $this->custom['old_domain'];
+            $this->psize = $this->is_down ? 1 : 20; //不下载远程文件每次20，下载远程文件每次1条
         }
         $this->custom['time'] = $this->custom['time'] ? $this->custom['time'] : 100;
         $this->validate       = [
@@ -140,6 +142,7 @@ class Home extends \Phpcmf\App
         ]);
         XR_V()->display('add.html');
     }
+
     /**
      * 栏目及信息
      */
@@ -219,22 +222,21 @@ class Home extends \Phpcmf\App
                 ->where('channelid != 10')
                 ->where('IsEnable', 1);
             if (! $cpage) {
-                // 计算数量
+                // 第一次 计算数量
                 $total = $channeldb->countAllResults();
                 if (! $total) {
                     $this->_admin_msg(0, dr_lang('无可用内容'));
                 }
                 $this->_admin_msg(1, dr_lang('正在转入栏目数据...'), $to_url . '&total=' . $total . '&cpage=' . ($cpage + 1));
             }
-            $psize = $this->is_down ? 1 : 20; //不下载远程文件每次20，下载远程文件每次1条
             $total = (int) XR_L('input')->get('total');
-            $tpage = ceil($total / $psize); // 总页数
-            // 更新完成
+            $tpage = ceil($total / $this->psize); // 总页数
             if ($cpage > $tpage) {
+                // 更新完成
                 XR_M('cache')->sync_cache(''); // 自动更新缓存
                 $this->_admin_msg(1, '导入成功', dr_url(APP_DIR . '/home/add'));
             }
-            $list   = $channeldb->limit($psize, $psize * ($cpage - 1))->get()->getResultArray();
+            $list   = $channeldb->limit($this->psize, $this->psize * ($cpage - 1))->get()->getResultArray();
             $ntable = XR_M()->dbprefix(SITE_ID . '_share_category');
             $fields = $this->_fields(1, $lang);
             if ($cpage == 1) {
@@ -248,7 +250,7 @@ class Home extends \Phpcmf\App
                 $this->_add_field('简短内容', 'scontent', 0, 'Textarea', '', 'category-share');
                 /**清空栏目数据表 */
                 $sql = 'TRUNCATE `' . $ntable . '`';
-                $r1  = XR_M()->query($sql);
+                XR_M()->query($sql);
             }
             if ($list) {
                 foreach ($list as $t) {
@@ -277,20 +279,7 @@ class Home extends \Phpcmf\App
                     $content = $t['ChannelContent'];
                     $content = dr_code2html($content); //字符转换
                     if ($this->is_down) {
-                        //
-                        // $content = str_replace( "&amp;", '&', $content );
-                        // $imgs = dr_get_content_img( $content );
-                        // 系统取图片函数改成用正则获取
-                        preg_match_all('/<img[^>]* src="([^"]*)"[^>]*>/i', $content, $matchs);
-                        $imgs = $matchs[1];
-                        foreach ($imgs as $img) {
-                            if ($img) {
-                                $img     = explode('?', $img)[0];
-                                $img     = str_replace(SITE_URL, '/', $img);
-                                $_img    = $this->_saveimg($t['ChannelID'], $img, 'share_category');
-                                $content = str_replace($img, dr_get_file($_img), $content);
-                            }
-                        }
+                        $content = $this->_content($content, 'share_category', $t['ChannelID']);
                     }
                     $save    = [];
                     $save[1] = [
@@ -345,8 +334,7 @@ class Home extends \Phpcmf\App
             if (! $page) {
                 /**清空共享索引表 */
                 $itable = XR_M()->dbprefix(SITE_ID . '_share_index');
-                $sql    = 'TRUNCATE `' . $itable . '`';
-                $r2     = XR_M()->query($sql);
+                XR_M()->query('TRUNCATE `' . $itable . '`');
                 // 创建模块
                 foreach ($this->mods as $mod) {
                     if (! dr_is_module($mod['nid'])) {
@@ -447,14 +435,37 @@ class Home extends \Phpcmf\App
                 XR_M('cache')->sync_cache(''); // 自动更新缓存
                 $this->_admin_msg(1, '模块创建成功', dr_url(APP_DIR . '/home/edit', ['st' => $st, 'page' => 1, 'lang' => $lang]), 1);
             } elseif ($page == 1) {
-                // 创建信息字段
-                foreach ($this->mods as $mod) {
-                    $module = XR_M()->db->table('module')->where('dirname', $mod['nid'])->get()->getRowArray();
-                    $fields = $this->_fields($mod['ChannelModelID'], $lang);
-                    $table  = XR_M()->prefix . SITE_ID . '_' . $mod['nid'];
-                    $this->_set_fields($fields, $table, $module['id'], 'module'); //创建字段
+                $cpage  = intval(XR_L('input')->get('cpage'));
+                $tableid = intval(XR_L('input')->get('tableid'));
+                $to_url = dr_url(APP_DIR . '/home/edit', ['st' => $st, 'page' => 1, 'lang' => $lang]);
+                if (!$cpage) {
+                    // 创建信息字段
+                    foreach ($this->mods as $mod) {
+                        $module = XR_M()->db->table('module')->where('dirname', $mod['nid'])->get()->getRowArray();
+                        $fields = $this->_fields($mod['ChannelModelID'], $lang);
+                        $table  = XR_M()->prefix . SITE_ID . '_' . $mod['nid'];
+                        $this->_set_fields($fields, $table, $module['id'], 'module'); //创建字段
+                    }
+                    $rt = $this->add_linkage($cpage, $lang);
+                    if($rt['total'] == 0){
+                        // 没有专题 跳过
+                        $this->_admin_msg(1, '字段创建成功', dr_url(APP_DIR . '/home/edit', ['st' => $st, 'page' => 2, 'lang' => $lang, 'cpage' => 0]), 1);
+                    }
+                    $this->_admin_msg(1, dr_lang('字段创建成功,开始创建专题...'), $to_url . '&total=' . $rt['total'] . '&cpage=' . ($cpage + 1) . '&tableid=' . $rt['tableid']);
                 }
-                $this->_admin_msg(1, '字段创建成功', dr_url(APP_DIR . '/home/edit', ['st' => $st, 'page' => 2, 'lang' => $lang]), 1);
+
+                $total = intval(XR_L('input')->get('total'));
+                $tpage = ceil($total / $this->psize); // 总页数
+
+                // 更新完成
+                if ($cpage > $tpage) {
+                    XR_M('cache')->sync_cache(''); // 自动更新缓存
+                    $this->_admin_msg(1, '专题入库成功', dr_url(APP_DIR . '/home/edit', ['st' => $st, 'page' => 2, 'lang' => $lang, 'cpage' => 0]), 1);
+                }
+
+                // 专题入库
+                $this->add_linkage($cpage, $lang, $tableid);
+                $this->_admin_msg(1, dr_lang('专题入库 执行中【%s】...', "$tpage/$cpage"), $to_url . '&total=' . $total . '&cpage=' . ($cpage + 1) . '&tableid=' . $tableid);
             } elseif ($page == 2) {
                 // 入库数据
                 $to_url = dr_url(APP_DIR . '/home/edit', ['st' => $st, 'page' => 2, 'lang' => $lang]);
@@ -466,21 +477,20 @@ class Home extends \Phpcmf\App
                     if (! $total) {
                         $this->_admin_msg(0, dr_lang('无可用内容'));
                     }
-                    $this->_admin_msg(1, dr_lang('正在执行中...'), $to_url . '&total=' . $total . '&cpage=' . ($cpage + 1));
+                    $this->_admin_msg(1, dr_lang('信息入库 执行中...'), $to_url . '&total=' . $total . '&cpage=' . ($cpage + 1));
                 }
-                $psize = $this->is_down ? 1 : 20; //不下载远程文件每次20，下载远程文件每次1条
-                $total = (int) XR_L('input')->get('total');
-                $tpage = ceil($total / $psize); // 总页数
+                $total = intval(XR_L('input')->get('total'));
+                $tpage = ceil($total / $this->psize); // 总页数
                 // 更新完成
                 if ($cpage > $tpage) {
                     XR_M('cache')->sync_cache(''); // 自动更新缓存
-                    $this->_admin_msg(1, dr_lang('入库完成'), dr_url(APP_DIR . '/home/add'));
+                    $this->_admin_msg(1, dr_lang('信息入库 入库完成'), dr_url(APP_DIR . '/home/add'));
                 }
                 $list = $this->_db()->table($table)
                     ->where('LanguageID', $lang)
                     ->where('IsEnable', 1)
                     ->where('IsCheck', 1)
-                    ->limit($psize, $psize * ($cpage - 1))
+                    ->limit($this->psize, $this->psize * ($cpage - 1))
                     ->orderBy('InfoID DESC')
                     ->get()
                     ->getResultArray();
@@ -521,7 +531,8 @@ class Home extends \Phpcmf\App
                             'updatetime'   => strtotime($row['InfoTime']),
                             'status'       => 9,
                             'tableid'      => 0,
-                            'displayorder' => intval($row['InfoOrder'])
+                            'displayorder' => intval($row['InfoOrder']),
+                            // 'SpecialID'    => $row['SpecialID'] //专题
                         ],
                         0 => [
                             'id'      => $row['InfoID'],
@@ -537,7 +548,7 @@ class Home extends \Phpcmf\App
                     }
                     $this->_save_content($mid, $save);
                 }
-                $this->_admin_msg(1, dr_lang('正在执行中【%s】...'.$row['InfoID'], "$tpage/$cpage"), $to_url . '&total=' . $total . '&cpage=' . ($cpage + 1), 0);
+                $this->_admin_msg(1, dr_lang('信息入库 执行中【%s】...' . $row['InfoID'], "$tpage/$cpage"), $to_url . '&total=' . $total . '&cpage=' . ($cpage + 1), 0);
             }
         }
     }
@@ -791,7 +802,7 @@ class Home extends \Phpcmf\App
             ],
             'related' => [ //关联
                 'option'   => [
-                    'modul'    => 'news',
+                    'module'    => 'news',
                     'title'    => '主题',
                     'limit'    => '20',
                     'pagesize' => '',
@@ -804,6 +815,16 @@ class Home extends \Phpcmf\App
                     'collapse' => '0',
                     'width'    => '',
                     'css'      => ''
+                ],
+                'validate' => $this->validate
+            ],
+            'linkage' => [ //联动 专题
+                'option'   => [
+                    'linkage' => 'special',
+                    'ck_child' => '0',
+                    'new' => '0',
+                    'value' => '',
+                    'css' => ''
                 ],
                 'validate' => $this->validate
             ],
@@ -837,6 +858,9 @@ class Home extends \Phpcmf\App
             } elseif ($t['DisplayType'] == 'channelexselect') {
                 // 扩展栏目
                 $this->_add_field($t['DisplayName'], $f, $id, 'Catids', dr_array2string($setting['channelexselect']), $relatedname);
+            } elseif ($t['DisplayType'] == 'specialselect') {
+                // 联动多选 专题
+                $this->_add_field($t['DisplayName'], $f, $id, 'Linkages', dr_array2string($setting['linkage']), $relatedname);
             } elseif ($t['DisplayType'] == 'radio' || $t['DisplayType'] == 'select' || $t['DisplayType'] == 'checkbox') {
                 //单选 多选 下拉
                 $options = '';
@@ -905,17 +929,21 @@ class Home extends \Phpcmf\App
             } elseif ($t['DisplayType'] == 'editormini' || $t['DisplayType'] == 'editor') {
                 // 编辑器 editor' 'editormini
                 $value = $this->_content($row[$t['FieldName']], $mid, $id, $time);
-            } elseif($t['DisplayType'] == 'channelexselect' ){
+            } elseif ($t['DisplayType'] == 'channelexselect') {
+                // 扩展栏目
                 $value = $row['ChannelIDEx'];
-                if( $value ){
+                if ($value) {
                     $value = explode(',', $value);
                     $value = dr_array2string($value);
                 }
-                // $t['FieldName'] =  'catids';
-                // $t['DisplayName'] = '扩展栏目';
-                // var_dump($value);exit;
-
-            }else {
+            } elseif ($t['DisplayType'] == 'specialselect') {
+                // 专题 联动
+                $value = $row['SpecialID'];
+                if ($value) {
+                    $value = explode(',', $value);
+                    $value = dr_array2string($value);
+                }
+            } else {
                 $value = $row[$t['FieldName']];
             }
 
@@ -943,6 +971,8 @@ class Home extends \Phpcmf\App
         }
         return $content;
     }
+
+    
     private function _db()
     {
         $db = \Config\Database::connect($this->custom);
@@ -1023,7 +1053,7 @@ class Home extends \Phpcmf\App
             if (! in_array($t['FieldName'], [
                 'InfoID',
                 'ChannelID',
-                'SpecialID', //所属专题
+                // 'SpecialID', //所属专题
                 'MemberID',
                 'InfoTitle',
                 'InfoSContent', //内容
@@ -1100,7 +1130,7 @@ class Home extends \Phpcmf\App
                 } else {
                     $count = $this->_db()->table('info')->where($t['FieldName'] . ' != ""')->whereIn('ChannelID', $channelids)->where('LanguageID', $lang)->where('IsEnable', 1)->countAllResults();
                 }
-                if ( $t['DisplayType'] == 'channelexselect' ){
+                if ($t['DisplayType'] == 'channelexselect') {
                     // 扩展栏目字段名改成 catids
                     $t['FieldName'] =  'catids';
                     $t['DisplayName'] = '扩展栏目';
@@ -1128,25 +1158,25 @@ class Home extends \Phpcmf\App
             return $this->save_err($id, $_url, $table);
         }
         if (stripos($url, '//img7') === 0) {
-            $url = str_replace("//img7", 'http://img6', $url);
-        }
-        if (stripos($url, 'https://img7') === 0) {
-            $url = str_replace("https://img7", 'http://img6', $url);
+            $url = str_replace("//img7", '//img6', $url);
         }
         if (stripos($url, '//') === 0) {
             $url = 'http:' . $url;
         }
-        // print_r($url);exit;
+        
         if (stripos($url, 'http') !== 0) {
-            $url = $this->old_domain . $url;
+            $old_domain = $this->old_domain;
+            $old_domain = $old_domain == "@" ? '' : $old_domain;
+            $url = $old_domain . $url;
         }
         $url = explode('?', $url)[0];
+        // $this->_admin_msg(0, $url);
+        // 查找附件库 防止重复下载
+        $file = dr_catcher_data($url, $timeout);
+        if (! $file) { //超时
+            return $this->save_err($id, $_url, $table);
+        }
         if (defined('SYS_ATTACHMENT_CF') && SYS_ATTACHMENT_CF) {
-            // 查找附件库 防止重复下载
-            $file = dr_catcher_data($url, $timeout);
-            if (! $file) { //超时
-                return $this->save_err($id, $_url, $table);
-            }
             $att = XR_M()->table('attachment')->where('filemd5', md5($file))->order_by('id DESC')->getRow();
             if ($att) {
                 return $att['id'];
@@ -1158,6 +1188,7 @@ class Home extends \Phpcmf\App
             $this->module['field']['thumb']['setting']['option']['image_reduce']
         );
         $rt = XR_L('Upload')->down_file([
+            'file_content' => $file,
             'url'        => $url,
             'path'       => $time,
             'timeout'    => $timeout,
@@ -1174,9 +1205,9 @@ class Home extends \Phpcmf\App
         }
         return $this->save_err($id, $_url, $table);
     }
-    public function save_err($id, $url, $table)
+    //下载失败返回原文件名并记录
+    private function save_err($id, $url, $table)
     {
-        //下载失败返回原文件名并记录
         $failimgs            = [];
         $ys_youdian_failimgs = XR_L('cache')->get_file('ys_youdian_failimgs');
         if (is_array($ys_youdian_failimgs)) {
@@ -1196,5 +1227,184 @@ class Home extends \Phpcmf\App
         ];
         XR_L('cache')->set_file('ys_youdian_failimgs', $failimgs);
         return $url;
+    }
+
+    // 专题 联动菜单
+    private function add_linkage($cpage, $lang, $tableid = 0)
+    {
+        $total = $this->_db()->table('special')->where('languageid', $lang)->where('IsEnable', 1)->countAllResults();
+        if($total == 0){
+            return ['total' => 0, 'tableid' => 0];
+        }
+        if (! $cpage) {
+            // 没有分页 创建联动菜单
+            $row = XR_M()->db->table('linkage')->where('code', 'special')->get()->getRowArray();
+            if ($row) {
+                $tableid = $row['id'];
+                // print_r($row);
+            } else {
+                $data = [
+                    'name'      => '专题',
+                    'code'      => 'special',
+                    'type'      => 0
+                ];
+                XR_M()->db->table('linkage')->insert($data);
+                $tableid = \Phpcmf\Service::M()->db->insertID(); // id
+            }
+
+            // echo $tableid;
+
+            $table = XR_M()->prefix . 'linkage_data_' . $tableid;
+            // 检查表是否存在
+
+            // $table_exists = XR_M()->db->query("SHOW TABLES LIKE `".$table."`")->getRowArray();
+            $table_exists = XR_M()->db->query("SHOW TABLES LIKE '" . $table . "'")->getRowArray();
+            if (!$table_exists) {
+                // 创建表
+                $sql = "CREATE TABLE `" . $table . "` (
+            `id` mediumint(8) UNSIGNED NOT NULL AUTO_INCREMENT,
+            `site` mediumint(5) UNSIGNED NOT NULL COMMENT '站点id',
+            `pid` mediumint(8) UNSIGNED NOT NULL DEFAULT '0' COMMENT '上级id',
+            `pids` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL COMMENT '所有上级id',
+            `name` varchar(30) COLLATE utf8mb4_unicode_ci NOT NULL COMMENT '栏目名称',
+            `cname` varchar(30) COLLATE utf8mb4_unicode_ci NOT NULL COMMENT '别名',
+            `child` tinyint(1) UNSIGNED DEFAULT '0' COMMENT '是否有下级',
+            `hidden` tinyint(1) UNSIGNED DEFAULT '0' COMMENT '前端隐藏',
+            `childids` text COLLATE utf8mb4_unicode_ci COMMENT '下级所有id',
+            `displayorder` mediumint(8) DEFAULT '0',
+            PRIMARY KEY (`id`),
+            KEY `cname` (`cname`),
+            KEY `hidden` (`hidden`),
+            KEY `list` (`site`,`displayorder`)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='联动菜单数据表'";
+
+                XR_M()->query($sql);
+            }
+
+            /**清空栏目数据表 */
+            $sql = 'TRUNCATE `' . $table . '`';
+            $r1  = XR_M()->query($sql);
+            // // 创建简短内容字段 SpecialDescription
+            if (! \Phpcmf\Service::M()->db->fieldExists("specialdescription", $table)) {
+                \Phpcmf\Service::M()->query('ALTER TABLE `' . $table . '` ADD `specialdescription` TEXT DEFAULT NULL COMMENT "简短内容"');
+            }
+            $this->_add_field('简短内容', 'specialdescription', $tableid, 'Textarea', '', 'linkage');
+
+            // SpecialPicture
+            if (! \Phpcmf\Service::M()->db->fieldExists("specialpicture", $table)) {
+                \Phpcmf\Service::M()->query('ALTER TABLE `' . $table . '` ADD `specialpicture` TEXT DEFAULT NULL COMMENT "图片"');
+            }
+
+            $setting    = [ //单文件
+                'option'   => array(
+                    'input'        => '1',
+                    'size'         => '2',
+                    'count'        => '20',
+                    'ext'          => 'jpg,gif,png,webp,jpeg,svg',
+                    'attachment'   => '0',
+                    'image_reduce' => '',
+                    'is_ext_tips'  => '0',
+                    'css'          => ''
+                ),
+                'validate' => $this->validate
+            ];
+            $this->_add_field('图片', 'specialpicture', $tableid, 'File', dr_array2string($setting), 'linkage');
+
+            return ['total' => $total, 'tableid' => $tableid];
+        }
+        $table = XR_M()->prefix . 'linkage_data_' . $tableid;
+        // $this->_admin_msg(0, $cpage .'---'.$this->psize .'---'.$tableid );
+        $rows = $this->_db()->table('special')
+            ->where('languageid', $lang)
+            ->where('IsEnable', 1)
+            ->limit($this->psize, $this->psize * ($cpage - 1))
+            ->get()->getResultArray();
+
+        foreach ($rows as $row) {
+            $thumb = (string) $row['SpecialPicture'];
+            if ($thumb && $this->is_down) {
+                //下载远程缩略图
+                $thumb = $this->_saveimg($row['SpecialID'], $thumb, 'linkages');
+            }
+
+            $data = [
+                'id' => $row['SpecialID'],
+                'site' => SITE_ID,
+                'pid' => 0,
+                'pids' => '',
+                'name' => $row['SpecialName'],
+                'cname' => 'special' . $row['SpecialID'],
+                'child' => 0,
+                'hidden' => 0,
+                'childids' => '',
+                'displayorder' => $row['SpecialOrder'],
+                'specialdescription' => $row['SpecialDescription'],
+                'specialpicture' => $thumb
+            ];
+            XR_M()->db->table($table)->replace($data);
+        }
+
+        // Specialselect
+
+
+
+        // id
+        // name
+        // 字段别名语言
+        // fieldname
+        // 字段名称
+        // fieldtype
+        // 字段类型
+        // relatedid
+        // 相关id
+        // relatedname
+        // 相关表
+        // isedit
+        // 是否可修改
+        // ismain
+        // 是否主表
+        // issystem
+        // 是否系统表
+        // ismember
+        // 是否会员可见
+        // issearch
+        // 是否可搜索
+        // disabled
+        // 禁用？
+        // setting
+        // 配置信息
+
+
+        // id 48
+        // name 所属专题
+        // fieldname specialid
+        // fieldtype Linkage
+        // relatedid 4
+        // relatedname module
+        // isedit 1
+        // ismain 1
+        // issystem 0
+        // ismember 1
+        // issearch 0
+        // disabled 0
+        // setting {
+        // "option":{
+        //     "linkage":"special",
+        //     "ck_child":"0",
+        //     "new":"0",
+        //     "value":"",
+        //     "css":""
+        // },
+        // "validate":{
+        //     "required":"0",
+        //     "pattern":"",
+        //     "errortips":"",
+        //     "check":"",
+        //     "filter":"",
+        //     "tips":"",
+        //     "formattr":""
+        // },
+        // "is_right":"0"
+        // }
     }
 }

@@ -8,7 +8,13 @@
     <div class="caption">
       <span class="caption-subject text-danger">
         {if $old_domain}
-        已开启图片入库，图片、附件等文件将保存到新网站中。 原网站网址：{$old_domain}<br>图片下载超时：{$time} 秒
+        已开启图片入库，图片、附件等文件将保存到新网站中。 
+        {if $old_domain != '@'}
+        原网站网址：{$old_domain}
+        {else}
+        图片在本网站内，请把Upload文件夹，放置在网站根目录
+        {/if}
+        <br>图片下载超时：{$time} 秒
         {else}
         未开启图片入库，需手动将图片、附件等文件（/Upload）上传至新网站。
         {/if}
