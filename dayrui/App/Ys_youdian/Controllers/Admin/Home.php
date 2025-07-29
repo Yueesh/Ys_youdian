@@ -447,7 +447,7 @@ class Home extends \Phpcmf\App
                         $this->_set_fields($fields, $table, $module['id'], 'module'); //创建字段
                     }
                     $rt = $this->add_linkage($cpage, $lang);
-                    if($rt['total'] == 0){
+                    if ($rt['total'] == 0) {
                         // 没有专题 跳过
                         $this->_admin_msg(1, '字段创建成功', dr_url(APP_DIR . '/home/edit', ['st' => $st, 'page' => 2, 'lang' => $lang, 'cpage' => 0]), 1);
                     }
@@ -972,7 +972,7 @@ class Home extends \Phpcmf\App
         return $content;
     }
 
-    
+
     private function _db()
     {
         $db = \Config\Database::connect($this->custom);
@@ -1163,16 +1163,21 @@ class Home extends \Phpcmf\App
         if (stripos($url, '//') === 0) {
             $url = 'http:' . $url;
         }
-        
+
+        $url = urldecode($url);
+        $url = explode('?', $url)[0];
+        $file = '';
         if (stripos($url, 'http') !== 0) {
             $old_domain = $this->old_domain;
+            if ($old_domain == "@") {
+                $file = file_get_contents(ROOTPATH . $url);
+            }
             $old_domain = $old_domain == "@" ? '' : $old_domain;
             $url = $old_domain . $url;
         }
-        $url = explode('?', $url)[0];
         // $this->_admin_msg(0, $url);
         // 查找附件库 防止重复下载
-        $file = dr_catcher_data($url, $timeout);
+        $file = $file ? $file : dr_catcher_data($url, $timeout);
         if (! $file) { //超时
             return $this->save_err($id, $_url, $table);
         }
@@ -1233,7 +1238,7 @@ class Home extends \Phpcmf\App
     private function add_linkage($cpage, $lang, $tableid = 0)
     {
         $total = $this->_db()->table('special')->where('languageid', $lang)->where('IsEnable', 1)->countAllResults();
-        if($total == 0){
+        if ($total == 0) {
             return ['total' => 0, 'tableid' => 0];
         }
         if (! $cpage) {
@@ -1343,68 +1348,5 @@ class Home extends \Phpcmf\App
             ];
             XR_M()->db->table($table)->replace($data);
         }
-
-        // Specialselect
-
-
-
-        // id
-        // name
-        // 字段别名语言
-        // fieldname
-        // 字段名称
-        // fieldtype
-        // 字段类型
-        // relatedid
-        // 相关id
-        // relatedname
-        // 相关表
-        // isedit
-        // 是否可修改
-        // ismain
-        // 是否主表
-        // issystem
-        // 是否系统表
-        // ismember
-        // 是否会员可见
-        // issearch
-        // 是否可搜索
-        // disabled
-        // 禁用？
-        // setting
-        // 配置信息
-
-
-        // id 48
-        // name 所属专题
-        // fieldname specialid
-        // fieldtype Linkage
-        // relatedid 4
-        // relatedname module
-        // isedit 1
-        // ismain 1
-        // issystem 0
-        // ismember 1
-        // issearch 0
-        // disabled 0
-        // setting {
-        // "option":{
-        //     "linkage":"special",
-        //     "ck_child":"0",
-        //     "new":"0",
-        //     "value":"",
-        //     "css":""
-        // },
-        // "validate":{
-        //     "required":"0",
-        //     "pattern":"",
-        //     "errortips":"",
-        //     "check":"",
-        //     "filter":"",
-        //     "tips":"",
-        //     "formattr":""
-        // },
-        // "is_right":"0"
-        // }
     }
 }
