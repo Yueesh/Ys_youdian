@@ -75,6 +75,7 @@ class Home extends \Phpcmf\App
                 'failover'   => [],
                 'port'       => $post['prot'],
                 'is_down'    => $post['is_down'] == 'on' ? 1 : 0,
+                'is_prod'    => $post['is_prod'] == 'on' ? 1 : 0,
                 'old_domain' => $old_domain,
                 'time'       => intval($post['time'])
             ];
@@ -173,8 +174,8 @@ class Home extends \Phpcmf\App
                 ];
             } elseif ($v['ChannelModelID'] == 36) {
                 $this->mods[] = [
-                    'nid'            => 'product',
-                    'typename'       => '产品',
+                    'nid'            => $this->custom['is_prod'] ? 'store' : 'product',
+                    'typename'       => $this->custom['is_prod'] ? '商城' : '产品',
                     'ChannelModelID' => 36
                 ];
             } elseif ($v['ChannelModelID'] == 31) {
@@ -509,6 +510,17 @@ class Home extends \Phpcmf\App
                         //下载远程缩略图
                         $thumb = $this->_saveimg($row['InfoID'], $row['InfoPicture'], $mid, dr_date(strtotime($row['InfoTime']), 'Ym'));
                     }
+
+                    if ($this->custom['is_prod'] == 1 && $mid == 'store') {
+                        // 商城缩略图是多图
+                        $thumb = dr_array2string([
+                            'file'        => [$thumb],
+                            'title'       => [''],
+                            'description' => ['']
+                        ]);
+                    }
+
+
                     $content = $row['InfoContent'];
                     $content = dr_code2html($content);
                     if ($this->is_down) {
@@ -523,7 +535,7 @@ class Home extends \Phpcmf\App
                             'title'        => $row['InfoTitle'],
                             'thumb'        => $thumb,
                             'uid'          => $this->uid,
-                            'url'          => '/index.php?c=show&id=' . $row['InfoID'],
+                            'url'          => '',
                             'author'       => $row['InfoAuthor'] ? $row['InfoAuthor'] : $this->member['username'],
                             'keywords'     => $row['Keywords'],
                             'description'  => $row['InfoSContent'],
@@ -545,6 +557,12 @@ class Home extends \Phpcmf\App
                     if ($fields) {
                         //其它字段入库
                         $save = $this->_in_fields($save, $fields, $row, $row['InfoID'], $mid, dr_date(strtotime($row['InfoTime']), 'Ym'));
+                    }
+                    if ($this->custom['is_prod'] == 1 && $mid == 'store') {
+                        // 商城
+                        $save[1]['price'] = $save[1]['infoprice']; // 价格
+                        $save[1]['price_quantity'] = $save[1]['stockcount']; // 库存数量
+                        $save[1]['is_sale'] = 1; // 是否上架
                     }
                     $this->_save_content($mid, $save);
                 }

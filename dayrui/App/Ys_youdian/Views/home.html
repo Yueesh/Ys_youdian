@@ -1,6 +1,8 @@
 {template "header.html"}
 <style>
-  .form-control{ display: inline-block;}
+  .form-control {
+    display: inline-block;
+  }
 </style>
 <div class="note note-danger">
   YouDianCMS 数据库转入
@@ -45,12 +47,9 @@
         <div class="form-group">
           <label>图片是否入库：</label>
           <label>
-            <input type="checkbox" id="switch" name="data[is_down]" class="make-switch" {if $data.is_down}checked{/if}>
-          </label>
-          <p> 开启后将图片、附件等文件保存到新网站中，但图片、附件入库可能失败，失败时，将存入原地址，需手工将原图片附件等上传到新网站。</p>
+            <input type="checkbox" id="switch" name="data[is_down]" class="make-switch" {if $data.is_down}checked{/if}> </label> <p> 开启后将图片、附件等文件保存到新网站中，但图片、附件入库可能失败，失败时，将存入原地址，需手工将原图片附件等上传到新网站。</p>
         </div>
-        <div class="form-group domain" {if ! $data.is_down}style="display: none;" {/if}>
-          <label>原网站网址：</label>
+        <div class="form-group domain" {if ! $data.is_down}style="display: none;" {/if}> <label>原网站网址：</label>
           <label>
             <input type="text" name="data[old_domain]" class="form-control input-xlarge" placeholder="原网站网址" value="{$data.old_domain}">
             <span> 以http或https开头，结尾不要有 / ，输入@，表示图片在本网站内，请把Upload文件夹，放置在网站根目录 </span>
@@ -61,16 +60,19 @@
             <p> 超时设置，单位秒，默认100秒 </p>
           </div>
         </div>
+        <div class="form-group">
+          <label>是否商城？：</label>
+          <label>
+            <input type="checkbox" id="switch" name="data[is_prod]" class="make-switch" {if $data.is_prod}checked{/if}> </label> <p> </p>
+        </div>
       </div>
       <div class="form-actions right">
         <button type="button" onclick="_submit()" class="btn green"> 下一步 </button>
       </div>
     </form>
   </div>
-
 </div>
 <script>
-
   $( '#switch' ).bootstrapSwitch( {
     onText: "启用",
     offText: "禁用",
