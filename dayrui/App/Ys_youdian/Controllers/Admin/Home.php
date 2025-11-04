@@ -510,17 +510,6 @@ class Home extends \Phpcmf\App
                         //下载远程缩略图
                         $thumb = $this->_saveimg($row['InfoID'], $row['InfoPicture'], $mid, dr_date(strtotime($row['InfoTime']), 'Ym'));
                     }
-
-                    if ($this->custom['is_prod'] == 1 && $mid == 'store') {
-                        // 商城缩略图是多图
-                        $thumb = dr_array2string([
-                            'file'        => [$thumb],
-                            'title'       => [''],
-                            'description' => ['']
-                        ]);
-                    }
-
-
                     $content = $row['InfoContent'];
                     $content = dr_code2html($content);
                     if ($this->is_down) {
@@ -563,6 +552,15 @@ class Home extends \Phpcmf\App
                         $save[1]['price'] = $save[1]['infoprice']; // 价格
                         $save[1]['price_quantity'] = $save[1]['stockcount']; // 库存数量
                         $save[1]['is_sale'] = 1; // 是否上架
+                        // 相册合并到图片 相册中第一张图片不是缩略图 则合并
+                        $infoalbum = dr_string2array($save[1]['infoalbum']);
+                        if($thumb != $infoalbum['file'][0]){
+                            array_unshift($infoalbum['file'], $thumb);
+                            array_unshift($infoalbum['title'], '');
+                            array_unshift($infoalbum['description'], '');
+                        }
+                        $save[1]['thumb'] = dr_array2string($infoalbum);
+                        $save[1]['infoalbum'] = '';
                     }
                     $this->_save_content($mid, $save);
                 }
